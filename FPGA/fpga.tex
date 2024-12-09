@@ -1,0 +1,108 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\title{
+\vspace{1cm}
+{\includegraphics[width=0.3\textwidth]{ 
+ /storage/emulated/0/vignan/IMG-20241112-WA0000.jpg} \\ FPGA Assignment}}
+\author{Bynaboyina Aiswarya \\ Roll No: FWC2229 \\ aiswaryabaiswarya61@gmail.com}
+ \begin{document}
+\maketitle
+ \section{ABSTRACT}
+
+This question demonstrates the implementation and analysis of the given Boolean expression using Vaman (Pygmy) microcontroller and Raspberry Pi with LEDs. The Boolean expression, represented as \((\overline{A} + \overline{B})[\overline{A}(B + C)] + A(\overline{B} + \overline{C})\), is simplified to identify its equivalent single three-input logic gate. By leveraging the computational power of Raspberry Pi and the compact Vaman microcontroller, the system evaluates the logical behavior of the expression. LEDs are used as visual indicators to verify the truth table and validate the functionality of the identified gate. This approach serves as a practical application in digital logic design and embedded systems education.
+
+ \begin{enumerate}
+	 \item AND
+	 \item OR
+	 \item XOR
+	 \item NAND
+ \end{enumerate}
+
+\section{COMPONENTS} 
+
+The required components list is given in Table: I., pin diagram of vaman is shown in Fig.1.
+\vspace{0.3cm}
+ \begin{table} [htbp]
+\centering
+\begin{tabular}{| c | c |} \hline
+Components  & Quantity \\\hline
+vaman   & 1 \\ \hline
+led  & 1 \\ \hline
+raspberry pi & 1 \\ \hline
+Jumper Wires   & 2 \\ \hline
+Breadboard & 1 \\ 
+\hline
+\end{tabular}
+\vspace{0.1cm}
+\caption{\label{tab:widgets}}
+\end{table}
+
+\section{PROCEDURE}
+ \begin{enumerate}
+\item Pin Configuration of vaman board shown in Fig-1.
+
+\begin{figure}[h]                           
+\centering                                 
+\includegraphics[width=0.25\textwidth]{	/storage/emulated/0/vignan/IMG_20241112_120530.jpg}                                           
+\caption{\label{fig-3:Gates}}               
+\end{figure}
+
+\item Make connections of vaman to led as per below table.
+
+\begin{table} [htbp]
+\centering
+\begin{tabular}{| c | c | c |} \hline
+Led  & vaman - PYGMY  \\\hline
+Anode &  GPIO-4 \\ \hline
+Cathode  & Gnd \\  
+\hline
+\end{tabular}
+\vspace{0.1cm}
+\caption{\label{tab:widgets}}
+\end{table}
+\item Connect the raspberry pi, vaman and ledas shown in fig-2.
+	\begin{figure}[h]                      
+\centering                                
+\includegraphics[width=0.22\textwidth]{ 
+     /storage/emulated/0/vignan/Screenshot_20241209_124547.jpg}                               
+\caption{\label{fig-2:Gates}}             
+\end{figure}
+\item connect raspberrypi to the mobile and identify the ip address of the raspberrypi.
+\item Execute the verilog code.
+\item After upload the fpga-code into raspberrypi board and vaman using the commands which is shown in fig-3.
+\begin{figure}[h]                       
+\centering                               
+\includegraphics[width=0.22\textwidth]{ 
+/storage/emulated/0/vignan/Screenshot_20241209_125042.jpg}                                
+\caption{\label{fig-3:Gates}}             
+\end{figure}
+
+
+ \end{enumerate}
+
+\section{RESULTS}
+ \begin{enumerate}
+\item Download the codes given in the link below and execute them to see the output as shown in figure 4.
+\item https://github.com/BynaboyinaAiswarya/Fwc-/tree/main/FPGA
+
+ \end{enumerate}
+
+ \begin{figure}[h]                       
+\centering                               
+\includegraphics[width=0.25\textwidth]{/storage/emulated/0/vignan/Screenshot_20241209_125307.jpg
+  }                                
+\caption{\label{fig-4:Gates}}             
+\end{figure}
+\section{CONCLUSION}
+Hence implementation of above astract using fgpa code with vaman board,raspberrypi and verification through led is done .
+
+
+\end{document}
