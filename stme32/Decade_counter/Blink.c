@@ -1,83 +1,136 @@
-#include<Arduino.h>
-#define SEG_A 3
-#define SEG_B 4
-#define SEG_C 5
-#define SEG_D 6
-#define SEG_E 7
-#define SEG_F 8
-#define SEG_G 9
+#include "stm32f103xb.h"
 
-#define LED_PIN 2
+void sysinit(void);
+void master(uint16_t psc, uint16_t arr, uint8_t rcr);
+void slave(uint16_t psc, uint16_t arr);
+void sevenseg(uint8_t dec);
 
-volatile uint8_t count = 0;
-
-void setup() {
-  // Initialize seven-segment display pins
-  pinMode(SEG_A, OUTPUT);
-  pinMode(SEG_B, OUTPUT);
-  pinMode(SEG_C, OUTPUT);
-  pinMode(SEG_D, OUTPUT);
-  pinMode(SEG_E, OUTPUT);
-  pinMode(SEG_F, OUTPUT);
-  pinMode(SEG_G, OUTPUT);
-
-  // Initialize LED pin
-  pinMode(LED_PIN, OUTPUT);
-
-  // Timer1 for master (1 ms interrupt)
-  noInterrupts();
-  TCCR1A = 0; // Clear control register A
-  TCCR1B = 0; // Clear control register B
-  TCNT1 = 0;  // Initialize counter
-  OCR1A = 249; // Set compare match register for 1 ms (16MHz / 64 / 250 = 1kHz)
-  TCCR1B |= (1 << WGM12); // CTC mode
-  TCCR1B |= (1 << CS11) | (1 << CS10); // 64 prescaler
-  TIMSK1 |= (1 << OCIE1A); // Enable timer compare interrupt
-
-  // Timer2 for slave (counts up to 10)
-  TCCR2A = 0; // Clear control register A
-  TCCR2B = 0; // Clear control register B
-  TCNT2 = 0;  // Initialize counter
-  OCR2A = 89; // Set compare match register for 90 Hz
-  TCCR2A |= (1 << WGM21); // CTC mode
-  TCCR2B |= (1 << CS22); // 64 prescaler
-  TIMSK2 |= (1 << OCIE2A); // Enable timer compare interrupt
-
-  interrupts(); // Enable global interrupts
+void setup()
+{
+    sysinit();
+    // Initialize Timer1 as master with desired parameters
+    master(1, 249, 1); // 8MHz / (2 x 250 x 2) = 8kHz
+    // Initialize Timer2 as slave with desired parameters
+    slave(8999, 9);    // 8kHz / (9000) = ~0.89Hz
 }
 
-void loop() {
-  // Display the current count on the seven-segment display
-  displayNumber(count);
+void loop()
+{
+    // Display the value from Timer2's CNT register on the 7-segment display
+    sevenseg(TIM2->CNT);
+
+    // Blink LED on PA1 for half-second intervals
+    if (TIM2->SR & 0x0001) // Check if TIM2 ARR count is complete
+    {
+        TIM2->SR &= ~0x0001; // Clear the TIM2 status register SR
+        GPIOA->ODR ^= (1 << 1); // Toggle the LED connected to PA1
+    }
 }
 
-// Timer1 interrupt service routine (1 ms)
-ISR(TIMER1_COMPA_vect) {
-  static uint16_t masterCounter = 0;
+void sysinit(void)
+{
+    /*
+     * Enable all Ports and Alternate Function clocks
+     */
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN |
+        RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPDEN | RCC_APB2ENR_AFIOEN;
 
-  masterCounter++;
-  if (masterCounter >= 1000) { // 1-second interval
-    masterCounter = 0;
-    TCNT2++; // Increment slave timer manually
-    digitalWrite(LED_PIN, !digitalRead(LED_PIN)); // Toggle LED
-  }
+    /* Enable the timer peripherals */
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;  // Enable Timer1
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;  // Enable Timer2
+
+    /*
+     * Disable JTAG and SWO (Free PB3, PB4 and PA15)
+     */
+    AFIO->MAPR = AFIO_MAPR_SWJ_CFG_JTAGDISABLE;
+
+    /*
+     * Enable PA1 as a digital output
+     */
+    GPIOA->CRL = 0x00000030;
+
+    /*
+     * Enable PB3-PB9 as digital outputs
+     */
+    GPIOB->CRL = 0x33333000;
+    GPIOB->CRH = 0x00000033;
 }
 
-// Timer2 interrupt service routine (counts to 10)
-ISR(TIMER2_COMPA_vect) {
-  if (++count >= 10) {
-    count = 0; // Reset count
-  }
+void master(uint16_t psc, uint16_t arr, uint8_t rcr)
+{
+    TIM1->SMCR = 0;        // Internal clock, 8MHz
+    TIM1->PSC = psc;       // Prescalar
+    TIM1->ARR = arr;       // Auto-reload register
+    TIM1->RCR = rcr;       // Repetition count
+    TIM1->CR2 = 0x0020;    // MMS = 010
+    TIM1->CR1 = 0x0001;    // Enable Timer1
 }
 
-// Function to display a number on the seven-segment display
-void displayNumber(uint8_t num) {
-  digitalWrite(SEG_A, num != 1 && num != 4);
-  digitalWrite(SEG_B, num != 5 && num != 6);
-  digitalWrite(SEG_C, num != 2);
-  digitalWrite(SEG_D, num != 1 && num != 4 && num != 7);
-  digitalWrite(SEG_E, num == 2 || num == 6 || num == 8 || num == 0);
-  digitalWrite(SEG_F, num != 1 && num != 2 && num != 3 && num != 7);
-  digitalWrite(SEG_G, num != 0 && num != 1 && num != 7);
+void slave(uint16_t psc, uint16_t arr)
+{
+    TIM2->PSC = psc;       // Prescalar
+    TIM2->SMCR = 0x0007;   // TS = 000, SMS = 111
+    TIM2->ARR = arr;       // Auto-reload register
+    TIM2->CR1 = 0x0001;    // Enable Timer2
+}
+
+void sevenseg(uint8_t dec)
+{
+    switch (dec)
+    {
+    case 0:
+        GPIOB->BRR = (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+        GPIOB->BSRR = (1 << 3);
+        break;
+
+    case 1:
+        GPIOB->BRR = (1 << 7) | (1 << 8);
+        GPIOB->BSRR = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 9);
+        break;
+
+    case 2:
+        GPIOB->BRR = (1 << 3) | (1 << 5) | (1 << 6) | (1 << 8) | (1 << 9);
+        GPIOB->BSRR = (1 << 4) | (1 << 7);
+        break;
+
+    case 3:
+        GPIOB->BRR = (1 << 3) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+        GPIOB->BSRR = (1 << 4) | (1 << 5);
+        break;
+
+    case 4:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 7) | (1 << 8);
+        GPIOB->BSRR = (1 << 5) | (1 << 6) | (1 << 9);
+        break;
+
+    case 5:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 6) | (1 << 7) | (1 << 9);
+        GPIOB->BSRR = (1 << 5) | (1 << 8);
+        break;
+
+    case 6:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 9);
+        GPIOB->BSRR = (1 << 8);
+        break;
+
+    case 7:
+        GPIOB->BRR = (1 << 7) | (1 << 8) | (1 << 9);
+        GPIOB->BSRR = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6);
+        break;
+
+    case 8:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+        break;
+
+    case 9:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9);
+        GPIOB->BSRR = (1 << 5);
+        break;
+
+    default:
+        GPIOB->BRR = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 9);
+        GPIOB->BSRR = (1 << 7) | (1 << 8);
+        break;
+    }
 }
 
